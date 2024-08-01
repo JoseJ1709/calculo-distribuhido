@@ -2,8 +2,8 @@ import socket
 import threading
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind(('localhost', 12345))
-print("Server is listening on port 12345...")
+server_socket.bind(('localhost', 12346))
+print("Server is listening on port 12346...")
 server_socket.listen(4)
 worker_sockets = []
 
@@ -18,11 +18,10 @@ def handle_client(client_socket, client_address):
             numbers = list(map(int, data.split()))
             numbers1, numbers2 = numbers[0:2], numbers[2:4]
 
-            if worker_sockets and len(numbers) > 2 :
+            if worker_sockets:
                 print("sending request..")
                 response = distribute_tasks(numbers1, numbers2)
             else:
-                print("calculating locally..")
                 response = calculate_locally(numbers)
 
             client_socket.send(str(response).encode())
