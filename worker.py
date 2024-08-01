@@ -10,6 +10,6 @@ while True:
     if not data:
         break
     print("working..")
-    number = int(data)
-    result = number * 5
+    number = list(map(int, data.split()))
+    result = sum(number)
     worker_socket.sendall(str(result).encode())
