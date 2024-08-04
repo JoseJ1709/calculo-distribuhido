@@ -18,12 +18,13 @@ def handle_client(client_socket, client_address):
             numbers = list(map(int, data.split()))
             numbers1, numbers2 = numbers[0:2], numbers[2:4]
 
-            if worker_sockets:
-                print("sending request..")
+            if worker_sockets and len(numbers) > 2:
+                print("Sending request to workers...")
                 response = distribute_tasks(numbers1, numbers2)
             else:
+                print("Calculating locally...")
                 response = calculate_locally(numbers)
-
+            print(f"Sending response...")
             client_socket.send(str(response).encode())
     except ConnectionResetError:
         print(f"Connection with client {client_address} lost.")
@@ -31,45 +32,57 @@ def handle_client(client_socket, client_address):
         client_socket.close()
         print(f"Connection with client {client_address} closed.")
 
+
 def distribute_tasks(numbers1, numbers2):
     results = []
-    available_workers = min(len(worker_sockets), 2)
-    for i in range(available_workers):
+
+    success = False
+    if len(worker_sockets) > 1:
         worker_socket = worker_sockets.pop(0)
-        if i == 0:
-            send_to_worker(worker_socket, numbers1,results)
-        else:
-            send_to_worker(worker_socket, numbers2,results)
+        success = send_task_to_worker(worker_socket, numbers1, results)
+        if success:
+            print("Valid result..")
+            worker_sockets.append(worker_socket)
+    if not success:
+        print("Calculating locally...")
+        results.append(sum(numbers1))
 
-    if len(results) == 2:
-        print("Two answers recived")
-        return sum(results)
-    elif len(results) == 1:
-        if available_workers == 1:
-            print("One answers recived")
-            return results[0] + sum(numbers2)
-        else:
-            print("One answers recived")
-            return results[0] + sum(numbers1)
-    else:
-        print("None wokers aviable")
-        return sum(numbers1 + numbers2)
+    success = False
+    if worker_sockets:
+        worker_socket = worker_sockets.pop(0)
+        success = send_task_to_worker(worker_socket, numbers2, results)
+        if success:
+            print("Valid result..")
+            worker_sockets.append(worker_socket)
+    if not success:
+        print("Calculating locally...")
+        results.append(sum(numbers2))
 
-def send_to_worker(worker_socket, numbers,results):
+    return sum(results)
+
+
+def send_task_to_worker(worker_socket, numbers, results):
     try:
         worker_socket.sendall(' '.join(map(str, numbers)).encode())
         result_data = worker_socket.recv(1024).decode()
         if result_data.isdigit():
             results.append(int(result_data))
-            worker_sockets.append(worker_socket)
+            return True
         else:
-            print(f"Invalid result from worker{worker_socket} closing connection..")
-            worker_socket.close()
-    except ConnectionResetError:
+            print(f"Invalid result from worker {worker_socket}, closing connection...")
+    except (ConnectionResetError, BrokenPipeError):
         print("Connection with a worker lost.")
-        worker_socket.close()
+
+    if worker_socket in worker_sockets:
+        worker_sockets.remove(worker_socket)
+
+    worker_socket.close()
+    return False
+
+
 def calculate_locally(numbers):
     return sum(numbers)
+
 
 while True:
     connection_socket, connection_address = server_socket.accept()

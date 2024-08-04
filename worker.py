@@ -7,9 +7,11 @@ worker_socket.sendall("worker".encode())
 while True:
 
     data = worker_socket.recv(1024).decode()
+    print("received..")
     if not data:
+        print("no valid data")
         break
-    print("working..")
     number = list(map(int, data.split()))
     result = sum(number)
+    print("sending response..")
     worker_socket.sendall(str(result).encode())
