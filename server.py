@@ -7,9 +7,7 @@ server_socket.bind(('localhost', 12346))
 print("Server is listening on port 12346...")
 server_socket.listen(5)
 
-# Lista de puertos de los trabajadores
 worker_ports = [10001,10002]
-# Lista de trabajadores disponibles
 workers_available = worker_ports.copy()
 
 def handle_client(client_socket, client_address):
